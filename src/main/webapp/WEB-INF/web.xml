@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<web-app id="WebApp_9" version="2.4" xmlns="http://java.sun.com/xml/ns/j2ee" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://java.sun.com/xml/ns/j2ee http://java.sun.com/xml/ns/j2ee/web-app_2_4.xsd">
+
+  <display-name>listener</display-name>
+  <context-param>
+        <param-name>contextConfigLocation</param-name>
+        <param-value>
+            classpath:data-sources.xml
+            classpath:org/onebusaway/realtime/hamilton/connector/application-context-webapp.xml
+        </param-value>
+    </context-param>
+  
+    <!-- Listeners -->
+    <listener>
+        <listener-class>org.springframework.web.context.ContextLoaderListener</listener-class>
+    </listener>
+    <listener>
+        <listener-class>org.springframework.web.context.request.RequestContextListener</listener-class>
+    </listener>
+  
+  <!-- Servlets -->
+  <servlet>
+    <servlet-name>Trip Updates</servlet-name>
+    <servlet-class>org.onebusaway.gtfs_realtime.exporter.TripUpdatesServlet</servlet-class>
+    <load-on-startup>1</load-on-startup>
+  </servlet>
+  <servlet-mapping>
+    <servlet-name>Trip Updates</servlet-name>
+    <url-pattern>/tripUpdates</url-pattern>
+  </servlet-mapping>
+  <servlet>
+    <servlet-name>Vehicle Positions</servlet-name>
+    <servlet-class>org.onebusaway.gtfs_realtime.exporter.VehiclePositionsServlet</servlet-class>
+    <load-on-startup>2</load-on-startup>
+  </servlet>
+  <servlet-mapping>
+    <servlet-name>Vehicle Positions</servlet-name>
+    <url-pattern>/vehiclePositions</url-pattern>
+  </servlet-mapping>
+  
+  <servlet>
+    <servlet-name>listener</servlet-name>
+    <servlet-class>org.onebusaway.realtime.hamilton.connector.TCIPListenerServlet</servlet-class>
+  </servlet>
+  <servlet-mapping>
+    <servlet-name>listener</servlet-name>
+    <url-pattern>/*</url-pattern>
+  </servlet-mapping>
+
+  <welcome-file-list>
+    <welcome-file>index.html</welcome-file>
+  </welcome-file-list>
+
+</web-app>
