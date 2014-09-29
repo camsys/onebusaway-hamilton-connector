@@ -1,6 +1,9 @@
 package org.onebusaway.realtime.hamilton.connector.impl;
 
+import java.io.ByteArrayOutputStream;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -12,6 +15,8 @@ import org.codehaus.jackson.map.AnnotationIntrospector;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jackson.xc.JaxbAnnotationIntrospector;
 import org.onebusaway.realtime.hamilton.connector.VehicleMessage;
+import org.onebusaway.realtime.hamilton.connector.model.ReportPOSRecordFactory;
+import org.onebusaway.realtime.hamilton.connector.model.WayFarerRecordFactory;
 import org.onebusaway.realtime.hamilton.connector.service.VehicleUpdateService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,12 +29,22 @@ public class VehicleUpdateServiceImpl implements VehicleUpdateService {
   private static final Logger _log = LoggerFactory.getLogger(VehicleUpdateServiceImpl.class);
 
   private static final String TCIP_KEY = "tcip";
+
+  private static final String UPDATE_MESSAGE_MARKER = "RTCP";
   
   protected ObjectMapper _mapper = new ObjectMapper();
   
   private Cache<String, VehicleMessage> _cache;
 
   private int _timeout = 5; // minutes
+  
+  static Map<String, WayFarerRecordFactory<?>> recordFactories;
+  
+  static {
+    recordFactories = new HashMap<String, WayFarerRecordFactory<?>>();
+    recordFactories.put(UPDATE_MESSAGE_MARKER, new ReportPOSRecordFactory());
+    
+  }
   
   public VehicleUpdateServiceImpl() {
     /*
@@ -68,6 +83,95 @@ public class VehicleUpdateServiceImpl implements VehicleUpdateService {
       vehicles.add(vm.getValue());
     }
     return vehicles;
+  }
+
+  public void receiveWayfarerLogOnOff(byte[] buff) {
+    if (buff.length > 24) {
+    String driver = bcdToString(buff, 1, 4);
+    String module = bcdToString(buff, 5, 3);
+    String running = bcdToString(buff, 8, 3);
+    String duty = bcdToString(buff, 11, 3);
+    String service = getBytesAsString(buff, 14, 4);
+    String journey = bcdToString(buff, 18, 3);
+    String direction = getBytesAsString(buff, 20, 1);
+    boolean inbound = (buff[20] == (byte)1);
+    String depot = bcdToString(buff, 21, 1);
+//    String hour = Integer.toHexString((int)getBytes(buff, 22, 1)[0]);
+//    String minute = Integer.toHexString((int)getBytes(buff, 23, 1)[0]);
+    String hour = bcdToString(buff[22]);
+    String minute = bcdToString(buff[23]);
+    String departureTime =  hour + ":" + minute;
+    //int stages = getBytesAsInteger(buff, 24, 1);
+    _log.info("hour=" + hour + ", min= " + minute + ", departureTime=" + departureTime + " for driver=" + driver + " at depot=" + depot);
+    } else if (buff.length >= 3) {
+      String cmd = bcdToString(buff, 0, 1);
+      _log.info("logoff=" + cmd);
+    }
+  }
+
+  private String bcdToString(byte[] buff, int start, int length) {
+    StringBuffer sb = new StringBuffer();
+    
+    for (int i = start; i < start+length; i++) {
+      sb.append(bcdToString(buff[i]));
+    }
+    return sb.toString();
+  }
+
+  public String bcdToString(byte bcd) {
+    StringBuffer sb = new StringBuffer();
+    byte high = (byte) (bcd & 0xf0);
+    high >>>= (byte) 4; 
+    high = (byte) (high & 0x0f);
+    byte low = (byte) (bcd & 0x0f);
+    sb.append(high);
+    sb.append(low);
+    return sb.toString();
+  }
+  
+  private int getBytesAsInteger(byte[] buff, int i, int j) {
+    return Integer.valueOf(getBytesAsString(buff, i, j));
+  }
+
+  private byte[] getBytes(byte[] buff, int i, int j) {
+    return Arrays.copyOfRange(buff, i, i+j);
+  }
+
+  private char getByteAsChar(byte[] buff, int i) {
+    int aChar = (int)buff[i];
+    aChar+=32;
+    return (char)aChar;
+  }
+
+  private String getBytesAsString(byte[] buff, int i, int j) {
+    
+    return new String(Arrays.copyOfRange(buff, i, i+j));
+  }
+
+  /**
+   * GPS Update.
+   * 
+   */
+  public void recieveGPSUpdate(ByteArrayOutputStream buffer) {
+    int start = 0;
+    int len = buffer.toString().length();
+    
+    
+    if (len > 4 ) {
+      byte[] byteArray = buffer.toByteArray();
+      String byteMarker = new String(Arrays.copyOfRange(byteArray, 0, 4));
+      if (UPDATE_MESSAGE_MARKER.equals(byteMarker)) {
+        WayFarerRecordFactory<?> factory = recordFactories.get(byteMarker);
+        if (factory != null) {
+          factory.createRecord(byteArray, 0, byteArray.length);
+        } else {
+          _log.error("missing factory for record type=" + byteMarker + ", discarded " + new String(byteArray));
+        }
+      }
+      
+    } else {
+      _log.info("discarded=" + bcdToString(buffer.toByteArray(), 0, len) + "(" + len + ")");
+    }
   }
 
 }

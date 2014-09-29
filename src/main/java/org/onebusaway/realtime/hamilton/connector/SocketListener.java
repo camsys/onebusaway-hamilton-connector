@@ -2,6 +2,7 @@ package org.onebusaway.realtime.hamilton.connector;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.math.BigInteger;
 import java.net.ServerSocket;
 import java.net.Socket;
 
@@ -71,10 +72,48 @@ public class SocketListener {
           
           if (client != null) {
             try {
-              ByteArrayOutputStream baos = new ByteArrayOutputStream();
-              IOUtils.copy(client.getInputStream(), baos);
-              _log.info("socket received: " + new String(baos.toByteArray()));
-              updateService.receiveTCIP(baos.toByteArray());
+              ByteArrayOutputStream baos = null;
+              // we can't use a simple copy here because of tcp keep alive
+              // look for sentinel?  assume pauses are complete?
+              
+              int read = client.getInputStream().read();
+              // single character reads are a bad idea
+              // this data is small however, and we look for a sentinel
+              while (read >= 0) {
+                // align on boundry
+                ByteArrayOutputStream update = null;
+                while (read != 2) {
+                  // if its not a log on/off message, its a GPS update
+                  update = new ByteArrayOutputStream();
+                  
+                  read = client.getInputStream().read(); // discard
+                  //_log.debug("discard=" + read);
+                  if (read != 2) {
+                    update.write(read);
+                  }
+                }
+                
+                updateService.recieveGPSUpdate(update);
+                
+                read = client.getInputStream().read();
+                if (read == 81) {
+                  baos = new ByteArrayOutputStream();
+                  int len = client.getInputStream().read();
+//                  _log.info("found expected boundary, length=" + len);
+                  for (int i = 0; i < len; i++) {
+                    int c = client.getInputStream().read();
+//                    _log.info("r=" + Integer.toHexString(c));
+                    baos.write(c);
+                  }
+                  updateService.receiveWayfarerLogOnOff(baos.toByteArray());
+                  //_log.info("received=" + String.format("%x",  baos.toByteArray()));
+                  // TODO send this somewhere
+                }
+                
+                read = client.getInputStream().read();
+                //_log.info("r=" + Integer.toHexString(read));
+              }
+              
               client.close();
             } catch (Exception e) {
               _log.error("issue reading from socket: " + e, e);
