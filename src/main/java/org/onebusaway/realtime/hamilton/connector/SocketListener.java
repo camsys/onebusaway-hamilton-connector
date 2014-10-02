@@ -1,14 +1,15 @@
 package org.onebusaway.realtime.hamilton.connector;
 
+import java.io.BufferedInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.math.BigInteger;
 import java.net.ServerSocket;
 import java.net.Socket;
 
 import javax.annotation.PostConstruct;
 
-import org.apache.commons.compress.utils.IOUtils;
 import org.onebusaway.realtime.hamilton.connector.service.VehicleUpdateService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -62,7 +63,6 @@ public class SocketListener {
           }
         }
         
-        
         if (serverSocket != null) {
           try {
             client = serverSocket.accept();
@@ -72,56 +72,41 @@ public class SocketListener {
           
           if (client != null) {
             try {
-              ByteArrayOutputStream baos = null;
-              // we can't use a simple copy here because of tcp keep alive
-              // look for sentinel?  assume pauses are complete?
               
-              int read = client.getInputStream().read();
-              // single character reads are a bad idea
-              // this data is small however, and we look for a sentinel
-              while (read >= 0) {
-                // align on boundry
-                ByteArrayOutputStream update = null;
-                while (read != 2) {
-                  // if its not a log on/off message, its a GPS update
-                  update = new ByteArrayOutputStream();
-                  
-                  read = client.getInputStream().read(); // discard
-                  //_log.debug("discard=" + read);
-                  if (read != 2) {
-                    update.write(read);
+              InputStream inputStream = new BufferedInputStream(client.getInputStream());
+              inputStream.mark(1);
+              int read = inputStream.read();
+              inputStream.reset();
+              while (read > 0) {
+                boolean found = findBoundary(inputStream, 2);
+                if (found) {
+                  boolean success = updateService.dispatch(inputStream);
+                  while (success) {
+                    updateService.dispatch(inputStream);
                   }
-                }
-                
-                updateService.recieveGPSUpdate(update);
-                
-                read = client.getInputStream().read();
-                if (read == 81) {
-                  baos = new ByteArrayOutputStream();
-                  int len = client.getInputStream().read();
-//                  _log.info("found expected boundary, length=" + len);
-                  for (int i = 0; i < len; i++) {
-                    int c = client.getInputStream().read();
-//                    _log.info("r=" + Integer.toHexString(c));
-                    baos.write(c);
-                  }
-                  updateService.receiveWayfarerLogOnOff(baos.toByteArray());
-                  //_log.info("received=" + String.format("%x",  baos.toByteArray()));
-                  // TODO send this somewhere
-                }
-                
-                read = client.getInputStream().read();
-                //_log.info("r=" + Integer.toHexString(read));
+                } 
+                inputStream.mark(1);
+                read = inputStream.read();
+                inputStream.reset();
               }
-              
-              client.close();
+             client.close();
             } catch (Exception e) {
               _log.error("issue reading from socket: " + e, e);
+            } finally {
+              if (client != null) {
+                // tell the client we can't continue
+                try {
+                  client.close();
+                } catch (IOException e) {
+                  // bury
+                }
+              }
             }
           }
         }
       }
-      if (serverSocket != null) {
+      if (serverSocket != null) 
+      {
         try {
           _log.info("closing socket on port " + port);
           serverSocket.close();
@@ -130,6 +115,35 @@ public class SocketListener {
         }
       }
     }
-    
+    private boolean findBoundary(InputStream inputStream, int sentinel) throws Exception {
+      _log.info("looking for sentinel");
+      inputStream.mark(1);
+      int read = inputStream.read();
+      ByteArrayOutputStream update = new ByteArrayOutputStream();
+      // do we have data ready?
+      while (read >= 0) {
+        // align on boundry
+        while (read != sentinel) {
+          inputStream.mark(1);
+          read = inputStream.read(); // discard
+          if (read != sentinel) {
+            update.write(read);
+          } else {
+            inputStream.reset();
+            return true;
+          }
+        }
+        // our very first read was on a boundary
+        if (read == 2) {
+          inputStream.reset();
+          return true;
+        }
+      }
+      _log.info("discarded " + new String(update.toByteArray()));
+      return false;
+    }
+
   }
+
+
 }

@@ -111,8 +111,9 @@ public class ReportPOSRecordFactory extends WayFarerRecordFactory<ReportPOS> {
     new FieldDef(4, "record type", null),
     new FieldDef(4, "sequence number", new ReportPOSFieldSetter() {
       public void setField(ReportPOS record) {
-        record.setSequenceNumber(getInteger());
+        record.setSequenceNumber(getIntegerFromHex());
       }
+
     }),
     new FieldDef(1, "periodic report", new ReportPOSFieldSetter() {
       public void setField(ReportPOS record) {
@@ -164,7 +165,7 @@ public class ReportPOSRecordFactory extends WayFarerRecordFactory<ReportPOS> {
       }
     }),
     new FieldDef(1, "GPS antenna", null),
-    new FieldDef(11, "lat", new ReportPOSFieldSetter() {
+    new FieldDef(10, "lat", new ReportPOSFieldSetter() {
       public void setField(ReportPOS record) {
         record.setLat(getDecimalFixedPoint(3));
       }
@@ -189,6 +190,11 @@ public class ReportPOSRecordFactory extends WayFarerRecordFactory<ReportPOS> {
     new FieldDef(3, "speed", new ReportPOSFieldSetter() {
       public void setField(ReportPOS record) {
         record.setSpeed(getInteger());
+      }
+    }),
+    new FieldDef(3, "heading", new ReportPOSFieldSetter() {
+      public void setField(ReportPOS record) {
+        record.setHeading(getInteger());
       }
     }),
     new FieldDef(3, "max speed", new ReportPOSFieldSetter() {

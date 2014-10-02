@@ -5,8 +5,8 @@ public class WayFarerFieldDefinition<T extends WayFarerRecord> {
   String name;
   WayFarerFieldSetter<T> setter;
   
-  public WayFarerFieldDefinition(int lenght, String name, WayFarerFieldSetter<T> setter) {
-    this.length = lenght;
+  public WayFarerFieldDefinition(int length, String name, WayFarerFieldSetter<T> setter) {
+    this.length = length;
     this.name = name;
     this.setter = setter;
   }

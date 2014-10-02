@@ -6,14 +6,19 @@ public abstract class WayFarerRecordFactory<T extends WayFarerRecord> {
 
   public abstract T createEmptyRecord();
   
-  public void createRecord(byte[] bytes, int start , int end) {
+  public T createRecord(byte[] bytes, int start , int end) {
     T record = createEmptyRecord();
     for (WayFarerFieldDefinition<T> f : getFields()) {
       if (f.setter != null) {
-        f.setter.setData(bytes, start, end);
+        f.setter.setData(bytes, start, start + f.length);
         f.setter.setField(record);
       }
+      start += f.length;
+      if (start >= end) {
+        break;
+      }
     }
+    return record;
   }
   
   

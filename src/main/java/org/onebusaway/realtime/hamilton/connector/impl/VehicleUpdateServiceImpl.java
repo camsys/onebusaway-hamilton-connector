@@ -1,21 +1,24 @@
 package org.onebusaway.realtime.hamilton.connector.impl;
 
 import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.TimeUnit;
 
+import org.apache.commons.io.IOUtils;
 import org.codehaus.jackson.JsonNode;
 import org.codehaus.jackson.map.AnnotationIntrospector;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jackson.xc.JaxbAnnotationIntrospector;
 import org.onebusaway.realtime.hamilton.connector.VehicleMessage;
+import org.onebusaway.realtime.hamilton.connector.model.ReportPOS;
 import org.onebusaway.realtime.hamilton.connector.model.ReportPOSRecordFactory;
+import org.onebusaway.realtime.hamilton.connector.model.WayFarerRecord;
 import org.onebusaway.realtime.hamilton.connector.model.WayFarerRecordFactory;
 import org.onebusaway.realtime.hamilton.connector.service.VehicleUpdateService;
 import org.slf4j.Logger;
@@ -56,6 +59,74 @@ public class VehicleUpdateServiceImpl implements VehicleUpdateService {
     _cache = CacheBuilder.newBuilder().expireAfterWrite(_timeout, TimeUnit.MINUTES).build();
   }
   
+  
+  public boolean dispatch(InputStream inputStream) throws Exception {
+    // look at the next few bytes
+    inputStream.mark(4);
+
+    // if bytemarker then go to gps update
+    int stx = inputStream.read();
+    int byteMarker = inputStream.read();
+    int size = inputStream.read();
+    int trail = inputStream.read();
+    byte[] muxArray = {(byte) stx, (byte) byteMarker, (byte) size, (byte) trail};
+    inputStream.reset();
+    // check if logon
+    if (byteMarker == 81) {
+      if (size == 3) {
+        _log.info("found logoff");
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        byte buff[] = new byte[6]; 
+        IOUtils.read(inputStream, buff, 0, 6);
+        this.receiveWayfarerLogOnOff(buff);
+        return true;
+      } else if (size == 27) {
+        _log.info("found logon");
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        byte buff[] = new byte[30]; 
+        IOUtils.read(inputStream, buff, 0, 27);
+        this.receiveWayfarerLogOnOff(buff);
+        return true;
+      } else {
+        _log.info("unexpected size=" + size);
+        inputStream.read();
+        return false;
+      }
+    } else {
+      _log.info("possible gps update");
+      // GPS Update message?
+      String mux = new String(muxArray);
+      if ("RTCP".equals(mux)) {
+        _log.info("RTCP found!");
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        byte buff[] = new byte[135]; 
+        IOUtils.read(inputStream, buff, 0, 135);
+        ReportPOS record = (ReportPOS) recieveGPSUpdate(buff);
+        _log.error("found operator" + record.getOperatorId() 
+            + " at " + record.getLat() + ", " + record.getLon() 
+            + " travelling at "  + record.getSpeed());
+        return true;
+      } else {
+        _log.info("unexpected mux=" + mux + ":" 
+      + "\\x" + Integer.toHexString(stx)
+      + "\\x" + Integer.toHexString(byteMarker)
+      + "\\x" + Integer.toHexString(size)
+      + "\\x" + Integer.toHexString(trail)
+      + "(" +stx+byteMarker+size+trail+")"
+      + "(" 
+      + bcdToString((byte)stx) 
+      + bcdToString((byte)byteMarker)
+      + bcdToString((byte)size)
+      + bcdToString((byte)trail)
+      + ")"
+      );
+        inputStream.read();
+        return false;
+      }
+    }
+  }
+
+  
   public void receiveTCIP(byte[] buff) {
     VehicleMessage vm = null;
     try {
@@ -86,7 +157,7 @@ public class VehicleUpdateServiceImpl implements VehicleUpdateService {
   }
 
   public void receiveWayfarerLogOnOff(byte[] buff) {
-    if (buff.length > 24) {
+    if (buff.length == 30) {
     String driver = bcdToString(buff, 1, 4);
     String module = bcdToString(buff, 5, 3);
     String running = bcdToString(buff, 8, 3);
@@ -103,9 +174,11 @@ public class VehicleUpdateServiceImpl implements VehicleUpdateService {
     String departureTime =  hour + ":" + minute;
     //int stages = getBytesAsInteger(buff, 24, 1);
     _log.info("hour=" + hour + ", min= " + minute + ", departureTime=" + departureTime + " for driver=" + driver + " at depot=" + depot);
-    } else if (buff.length >= 3) {
-      String cmd = bcdToString(buff, 0, 1);
+    } else if (buff.length == 6) {
+      String cmd = bcdToString(buff, 3, 1);
       _log.info("logoff=" + cmd);
+    } else {
+      _log.error("unexpected size of buffer=" + buff.length);
     }
   }
 
@@ -152,26 +225,27 @@ public class VehicleUpdateServiceImpl implements VehicleUpdateService {
    * GPS Update.
    * 
    */
-  public void recieveGPSUpdate(ByteArrayOutputStream buffer) {
+  public WayFarerRecord recieveGPSUpdate(byte[] buff) {
     int start = 0;
-    int len = buffer.toString().length();
-    
+    int len = buff.length;
+    _log.info("u(" + len + "):" + new String(buff));
     
     if (len > 4 ) {
-      byte[] byteArray = buffer.toByteArray();
-      String byteMarker = new String(Arrays.copyOfRange(byteArray, 0, 4));
+      String byteMarker = new String(Arrays.copyOfRange(buff, 0, 4));
+//      _log.info("byteMarker=" + byteMarker);
       if (UPDATE_MESSAGE_MARKER.equals(byteMarker)) {
         WayFarerRecordFactory<?> factory = recordFactories.get(byteMarker);
         if (factory != null) {
-          factory.createRecord(byteArray, 0, byteArray.length);
+         return  factory.createRecord(buff, 0, buff.length);
         } else {
-          _log.error("missing factory for record type=" + byteMarker + ", discarded " + new String(byteArray));
+          _log.error("missing factory for record type=" + byteMarker + ", discarded " + new String(buff));
         }
       }
       
     } else {
-      _log.info("discarded=" + bcdToString(buffer.toByteArray(), 0, len) + "(" + len + ")");
+//      _log.info("discarded=" + bcdToString(buffer.toByteArray(), 0, len) + "(" + len + ")");
     }
+    return null;
   }
 
 }

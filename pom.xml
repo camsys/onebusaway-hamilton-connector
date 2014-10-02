@@ -42,7 +42,6 @@
 		  <version>2.4</version>
 		  <scope>provided</scope>
 		</dependency>
-
 		<!-- <dependency> <groupId>net.sf.opencsv</groupId> <artifactId>opencsv</artifactId> 
 			<version>2.0</version> </dependency> -->
 <!-- 		<dependency> -->
@@ -89,9 +88,9 @@
 			<version>1.1.12-freq-SNAPSHOT</version>
 		</dependency>
 		<dependency>
-			<groupId>org.apache.commons</groupId>
-			<artifactId>commons-compress</artifactId>
-			<version>1.2</version>
+			<groupId>commons-io</groupId>
+			<artifactId>commons-io</artifactId>
+			<version>2.4</version>
 		</dependency>
 		<dependency>
 			<groupId>org.codehaus.jackson</groupId>
@@ -137,7 +136,6 @@
 			<groupId>junit</groupId>
 			<artifactId>junit</artifactId>
 			<version>4.8.1</version>
-			<scope>test</scope>
 		</dependency>
 	</dependencies>
 

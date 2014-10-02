@@ -28,6 +28,10 @@ public abstract class WayFarerFieldSetter<T extends WayFarerRecord> {
   public int getInteger() {
     return Integer.parseInt(getStringData());
   }
+  
+  public int getIntegerFromHex() {
+    return Integer.parseInt(getStringData(), 16);
+  }
 
   public long getLong() {
     return Long.parseLong(getStringData());
