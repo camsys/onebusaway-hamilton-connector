@@ -1,6 +1,6 @@
 package org.onebusaway.realtime.hamilton.connector.model;
 
-abstract class ReportPOSFieldSetter extends WayFarerFieldSetter<ReportPOS> {
+abstract class PositionReportFieldSetter extends AVLRecordFieldSetter<PositionReport> {
 }
 
 /*
@@ -99,34 +99,34 @@ field is reserved.
 
 g Reserved for future use.
  */
-public class ReportPOSRecordFactory extends WayFarerRecordFactory<ReportPOS> {
+public class PositionReportRecordFactory extends AVLRecordFactory<PositionReport> {
 
-  static class FieldDef extends WayFarerFieldDefinition<ReportPOS> {
-    public FieldDef(int length, String name, WayFarerFieldSetter<ReportPOS> setter) {
+  static class FieldDef extends AVLFieldDefinition<PositionReport> {
+    public FieldDef(int length, String name, AVLRecordFieldSetter<PositionReport> setter) {
       super(length, name, setter);
     }
   }
   
-  private static WayFarerFieldDefinition[] fields = {
+  private static AVLFieldDefinition[] fields = {
     new FieldDef(4, "record type", null),
-    new FieldDef(4, "sequence number", new ReportPOSFieldSetter() {
-      public void setField(ReportPOS record) {
+    new FieldDef(4, "sequence number", new PositionReportFieldSetter() {
+      public void setField(PositionReport record) {
         record.setSequenceNumber(getIntegerFromHex());
       }
 
     }),
-    new FieldDef(1, "periodic report", new ReportPOSFieldSetter() {
-      public void setField(ReportPOS record) {
+    new FieldDef(1, "periodic report", new PositionReportFieldSetter() {
+      public void setField(PositionReport record) {
         record.setTriggerType(getInteger());
       }
     }),
-    new FieldDef(4, "trigger time week number", new ReportPOSFieldSetter() {
-      public void setField(ReportPOS record) {
+    new FieldDef(4, "trigger time week number", new PositionReportFieldSetter() {
+      public void setField(PositionReport record) {
         record.setGpsTriggerWeekNumber(getInteger());
       }
     }),
-    new FieldDef(6, "trigger time seconds into week", new ReportPOSFieldSetter() {
-      public void setField(ReportPOS record) {
+    new FieldDef(6, "trigger time seconds into week", new PositionReportFieldSetter() {
+      public void setField(PositionReport record) {
         record.setGpsTriggerSecondsIntoWeek(getLong());
       }
     }),
@@ -138,72 +138,72 @@ public class ReportPOSRecordFactory extends WayFarerRecordFactory<ReportPOS> {
     new FieldDef(1, "GSM status", null),
     new FieldDef(2, "GSM signal strength", null),
     new FieldDef(1, "GSM registration info", null),
-    new FieldDef(6, "operator id", new ReportPOSFieldSetter() {
-      public void setField(ReportPOS record) {
+    new FieldDef(6, "operator id", new PositionReportFieldSetter() {
+      public void setField(PositionReport record) {
         record.setOperatorId(getStringData());
       }
     }),
-    new FieldDef(4, "cell id", new ReportPOSFieldSetter() {
-      public void setField(ReportPOS record) {
+    new FieldDef(4, "cell id", new PositionReportFieldSetter() {
+      public void setField(PositionReport record) {
         record.setCellId(getStringData());
       }
     }),
     new FieldDef(1, "reserved", null),
-    new FieldDef(1, "ignition", new ReportPOSFieldSetter() {
-      public void setField(ReportPOS record) {
+    new FieldDef(1, "ignition", new PositionReportFieldSetter() {
+      public void setField(PositionReport record) {
         record.setIgnitionFlag(getInteger());
       }
     }),
-    new FieldDef(1, "power source", new ReportPOSFieldSetter() {
-      public void setField(ReportPOS record) {
+    new FieldDef(1, "power source", new PositionReportFieldSetter() {
+      public void setField(PositionReport record) {
         record.setPowerSourceFlag(getInteger());
       }
     }),
-    new FieldDef(1, "GPS state", new ReportPOSFieldSetter() {
-      public void setField(ReportPOS record) {
+    new FieldDef(1, "GPS state", new PositionReportFieldSetter() {
+      public void setField(PositionReport record) {
         record.setGpsSatellites(getInteger());
       }
     }),
     new FieldDef(1, "GPS antenna", null),
-    new FieldDef(10, "lat", new ReportPOSFieldSetter() {
-      public void setField(ReportPOS record) {
+    new FieldDef(10, "lat", new PositionReportFieldSetter() {
+      public void setField(PositionReport record) {
         record.setLat(getDecimalFixedPoint(3));
       }
     }),
-    new FieldDef(11, "lon", new ReportPOSFieldSetter() {
-      public void setField(ReportPOS record) {
+    new FieldDef(11, "lon", new PositionReportFieldSetter() {
+      public void setField(PositionReport record) {
         record.setLon(getDecimalFixedPoint(4));
       }
     }),
     new FieldDef(6, "altitude", null),
-    new FieldDef(4, "Fix GPS week number", new ReportPOSFieldSetter() {
-      public void setField(ReportPOS record) {
+    new FieldDef(4, "Fix GPS week number", new PositionReportFieldSetter() {
+      public void setField(PositionReport record) {
         record.setGpsFixWeekNumber(getInteger());
       }
     }),
-    new FieldDef(6, "Fix GPS seconds into week", new ReportPOSFieldSetter() {
-      public void setField(ReportPOS record) {
+    new FieldDef(6, "Fix GPS seconds into week", new PositionReportFieldSetter() {
+      public void setField(PositionReport record) {
         record.setGpsFixSecondsIntoWeek(getLong());
       }
     }),
     new FieldDef(1, "Fix type", null),
-    new FieldDef(3, "speed", new ReportPOSFieldSetter() {
-      public void setField(ReportPOS record) {
+    new FieldDef(3, "speed", new PositionReportFieldSetter() {
+      public void setField(PositionReport record) {
         record.setSpeed(getInteger());
       }
     }),
-    new FieldDef(3, "heading", new ReportPOSFieldSetter() {
-      public void setField(ReportPOS record) {
+    new FieldDef(3, "heading", new PositionReportFieldSetter() {
+      public void setField(PositionReport record) {
         record.setHeading(getInteger());
       }
     }),
-    new FieldDef(3, "max speed", new ReportPOSFieldSetter() {
-      public void setField(ReportPOS record) {
+    new FieldDef(3, "max speed", new PositionReportFieldSetter() {
+      public void setField(PositionReport record) {
         record.setMaxSpeed(getInteger());
       }
     }),
-    new FieldDef(3, "distance travelled", new ReportPOSFieldSetter() {
-      public void setField(ReportPOS record) {
+    new FieldDef(3, "distance travelled", new PositionReportFieldSetter() {
+      public void setField(PositionReport record) {
         record.setDistanceTravelled(getDecimalFixedPoint(3));
       }
     }),
@@ -211,13 +211,13 @@ public class ReportPOSRecordFactory extends WayFarerRecordFactory<ReportPOS> {
   };
   
   @Override
-  public WayFarerFieldDefinition<ReportPOS>[] getFields() {
+  public AVLFieldDefinition<PositionReport>[] getFields() {
     return fields;
   }
 
   @Override
-  public ReportPOS createEmptyRecord() {
-    return new ReportPOS();
+  public PositionReport createEmptyRecord() {
+    return new PositionReport();
   }
 
   

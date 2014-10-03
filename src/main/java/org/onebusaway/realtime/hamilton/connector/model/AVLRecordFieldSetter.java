@@ -1,6 +1,12 @@
 package org.onebusaway.realtime.hamilton.connector.model;
 
-public abstract class WayFarerFieldSetter<T extends WayFarerRecord> {
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+public abstract class AVLRecordFieldSetter<T extends AVLRecord> {
+  
+  private static final Logger _log = LoggerFactory.getLogger(AVLRecordFieldSetter.class);
+  
   protected byte[] bytes;
   protected int start;
   protected int end;
@@ -63,6 +69,43 @@ public abstract class WayFarerFieldSetter<T extends WayFarerRecord> {
       start++;
     }
     return bytes[start] == 'Y';
+  }
+
+  /**
+   * parse bytes as Binary-coded decimal.
+   * @return
+   */
+  public String getBcd() {
+    if (start > bytes.length) {
+      return "";
+    }
+    if (end > bytes.length) {
+      return bcdToString(bytes, start, bytes.length - start);
+    }
+    return bcdToString(bytes, start, end - start);
+  }
+  
+  public String bcdToString(byte[] buff, int start, int length) {
+    StringBuffer sb = new StringBuffer();
+    
+    for (int i = start; i < start+length; i++) {
+      String s = bcdToString(buff[i]);
+      _log.info(s);
+      sb.append(s);
+    }
+    _log.info(start + "->" + length + "="+sb.toString());
+    return sb.toString();
+  }
+
+  public String bcdToString(byte bcd) {
+    StringBuffer sb = new StringBuffer();
+    byte high = (byte) (bcd & 0xf0);
+    high >>>= (byte) 4; 
+    high = (byte) (high & 0x0f);
+    byte low = (byte) (bcd & 0x0f);
+    sb.append(high);
+    sb.append(low);
+    return sb.toString();
   }
 
 

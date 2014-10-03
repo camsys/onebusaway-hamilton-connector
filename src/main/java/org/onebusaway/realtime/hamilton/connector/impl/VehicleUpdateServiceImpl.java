@@ -16,10 +16,11 @@ import org.codehaus.jackson.map.AnnotationIntrospector;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jackson.xc.JaxbAnnotationIntrospector;
 import org.onebusaway.realtime.hamilton.connector.VehicleMessage;
-import org.onebusaway.realtime.hamilton.connector.model.ReportPOS;
-import org.onebusaway.realtime.hamilton.connector.model.ReportPOSRecordFactory;
-import org.onebusaway.realtime.hamilton.connector.model.WayFarerRecord;
-import org.onebusaway.realtime.hamilton.connector.model.WayFarerRecordFactory;
+import org.onebusaway.realtime.hamilton.connector.model.PositionReport;
+import org.onebusaway.realtime.hamilton.connector.model.PositionReportRecordFactory;
+import org.onebusaway.realtime.hamilton.connector.model.AVLRecord;
+import org.onebusaway.realtime.hamilton.connector.model.AVLRecordFactory;
+import org.onebusaway.realtime.hamilton.connector.model.WayfarerLogonRecordFactory;
 import org.onebusaway.realtime.hamilton.connector.service.VehicleUpdateService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,6 +35,8 @@ public class VehicleUpdateServiceImpl implements VehicleUpdateService {
   private static final String TCIP_KEY = "tcip";
 
   private static final String UPDATE_MESSAGE_MARKER = "RTCP";
+  private static final String LOGON_MESSAGE_MARKER = "\u0002\u0051\u001c";
+  private static final String LOGOFF_MESSAGE_MARKER = "\u0002\u0051\u0003";
   
   protected ObjectMapper _mapper = new ObjectMapper();
   
@@ -41,11 +44,14 @@ public class VehicleUpdateServiceImpl implements VehicleUpdateService {
 
   private int _timeout = 5; // minutes
   
-  static Map<String, WayFarerRecordFactory<?>> recordFactories;
+  static Map<String, AVLRecordFactory<?>> recordFactories;
+
+  
   
   static {
-    recordFactories = new HashMap<String, WayFarerRecordFactory<?>>();
-    recordFactories.put(UPDATE_MESSAGE_MARKER, new ReportPOSRecordFactory());
+    recordFactories = new HashMap<String, AVLRecordFactory<?>>();
+    recordFactories.put(UPDATE_MESSAGE_MARKER, new PositionReportRecordFactory());
+    recordFactories.put(LOGON_MESSAGE_MARKER, new WayfarerLogonRecordFactory());
     
   }
   
@@ -74,14 +80,14 @@ public class VehicleUpdateServiceImpl implements VehicleUpdateService {
     // check if logon
     if (byteMarker == 81) {
       if (size == 3) {
-        _log.info("found logoff");
+        _log.debug("found logoff");
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         byte buff[] = new byte[6]; 
         IOUtils.read(inputStream, buff, 0, 6);
         this.receiveWayfarerLogOnOff(buff);
         return true;
       } else if (size == 27) {
-        _log.info("found logon");
+        _log.debug("found logon");
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         byte buff[] = new byte[30]; 
         IOUtils.read(inputStream, buff, 0, 27);
@@ -93,7 +99,7 @@ public class VehicleUpdateServiceImpl implements VehicleUpdateService {
         return false;
       }
     } else {
-      _log.info("possible gps update");
+      _log.debug("possible gps update");
       // GPS Update message?
       String mux = new String(muxArray);
       if ("RTCP".equals(mux)) {
@@ -101,7 +107,7 @@ public class VehicleUpdateServiceImpl implements VehicleUpdateService {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         byte buff[] = new byte[135]; 
         IOUtils.read(inputStream, buff, 0, 135);
-        ReportPOS record = (ReportPOS) recieveGPSUpdate(buff);
+        PositionReport record = (PositionReport) recieveGPSUpdate(buff);
         _log.error("found operator" + record.getOperatorId() 
             + " at " + record.getLat() + ", " + record.getLon() 
             + " travelling at "  + record.getSpeed());
@@ -156,30 +162,27 @@ public class VehicleUpdateServiceImpl implements VehicleUpdateService {
     return vehicles;
   }
 
-  public void receiveWayfarerLogOnOff(byte[] buff) {
-    if (buff.length == 30) {
-    String driver = bcdToString(buff, 1, 4);
-    String module = bcdToString(buff, 5, 3);
-    String running = bcdToString(buff, 8, 3);
-    String duty = bcdToString(buff, 11, 3);
-    String service = getBytesAsString(buff, 14, 4);
-    String journey = bcdToString(buff, 18, 3);
-    String direction = getBytesAsString(buff, 20, 1);
-    boolean inbound = (buff[20] == (byte)1);
-    String depot = bcdToString(buff, 21, 1);
-//    String hour = Integer.toHexString((int)getBytes(buff, 22, 1)[0]);
-//    String minute = Integer.toHexString((int)getBytes(buff, 23, 1)[0]);
-    String hour = bcdToString(buff[22]);
-    String minute = bcdToString(buff[23]);
-    String departureTime =  hour + ":" + minute;
-    //int stages = getBytesAsInteger(buff, 24, 1);
-    _log.info("hour=" + hour + ", min= " + minute + ", departureTime=" + departureTime + " for driver=" + driver + " at depot=" + depot);
+  public AVLRecord receiveWayfarerLogOnOff(byte[] buff) {
+    if (buff.length > 30) {
+      int start = 0;
+      int len = buff.length;
+      _log.info("u(" + len + "):" + new String(buff));
+      
+      String byteMarker = new String(Arrays.copyOfRange(buff, 0, 3));
+      _log.info("byteMarker=" + byteMarker);
+      AVLRecordFactory<?> factory = recordFactories.get(byteMarker);
+      if (factory != null) {
+         return factory.createRecord(buff, 0, buff.length);
+      } else {
+        _log.error("missing factory for record type=" + byteMarker + ", discarded " + new String(buff));
+      }
     } else if (buff.length == 6) {
       String cmd = bcdToString(buff, 3, 1);
       _log.info("logoff=" + cmd);
     } else {
       _log.error("unexpected size of buffer=" + buff.length);
     }
+    return null;
   }
 
   private String bcdToString(byte[] buff, int start, int length) {
@@ -225,7 +228,7 @@ public class VehicleUpdateServiceImpl implements VehicleUpdateService {
    * GPS Update.
    * 
    */
-  public WayFarerRecord recieveGPSUpdate(byte[] buff) {
+  public AVLRecord recieveGPSUpdate(byte[] buff) {
     int start = 0;
     int len = buff.length;
     _log.info("u(" + len + "):" + new String(buff));
@@ -234,7 +237,7 @@ public class VehicleUpdateServiceImpl implements VehicleUpdateService {
       String byteMarker = new String(Arrays.copyOfRange(buff, 0, 4));
 //      _log.info("byteMarker=" + byteMarker);
       if (UPDATE_MESSAGE_MARKER.equals(byteMarker)) {
-        WayFarerRecordFactory<?> factory = recordFactories.get(byteMarker);
+        AVLRecordFactory<?> factory = recordFactories.get(byteMarker);
         if (factory != null) {
          return  factory.createRecord(buff, 0, buff.length);
         } else {

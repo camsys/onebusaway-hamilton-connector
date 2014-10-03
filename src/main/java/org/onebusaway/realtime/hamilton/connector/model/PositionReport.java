@@ -1,6 +1,6 @@
 package org.onebusaway.realtime.hamilton.connector.model;
 
-public class ReportPOS implements WayFarerRecord {
+public class PositionReport implements AVLRecord {
   
   int sequenceNumber;
   int triggerType;
