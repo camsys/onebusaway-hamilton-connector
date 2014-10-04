@@ -15,7 +15,7 @@ public class VehicleUpdateServiceImplTest {
 //  @Test
   public void testRecieveGPSUpdate() throws Exception {
     VehicleUpdateServiceImpl impl = new VehicleUpdateServiceImpl();
-    byte[] msg = "RTCPFCE3018124053060000241000000000022053001-192F01011-411361867+1748403917000106181207827200022580000003000000000000057A;ID=00000001;*".getBytes();
+    byte[] msg = "RTCPFCE3018124053060000241000000000022053001-192F01011-411361867,1748403917000106181207827200022580000003000000000000057A;ID=00000001;*".getBytes();
     AVLRecord wfr = impl.recieveGPSUpdate(msg); 
     assertNotNull(wfr);
     assertTrue(wfr instanceof PositionReport);
@@ -45,25 +45,25 @@ public class VehicleUpdateServiceImplTest {
   public void testReceiveWayfarerLogOnOff() {
     VehicleUpdateServiceImpl impl = new VehicleUpdateServiceImpl();
 
-    String msg = ""
-        + "\u0002" // STX
-        + "\u0051" // device address
-        + "\u001C" // length
-        + "\u00C2" + ""// command LOGON
-        + 0x01 + "" + 0x23 + "" + 0x45 + "" + 0x67 // driver number 1234567
-        + "\u0065\u0043\u0021" // module 654321
-        + "\u0002\u0001\u0005" // running board 20105
-        + "\u0000\u0012\u0024" // duty 1234
-        + "\u0032\u0032\u0041\u0020" // service 12A
-        + "\u0001\u0052" // journey 152
-        + "\u0000" // direction outward
-        + "\u0030" // depot 30
-        + "\u0010\u0027" // time 10:27
-        + "\u0014" // states
-        + "LH" // CRC low/high
-        ;
+    byte[] msg = {
+         (byte)0x02 // STX
+        , (byte)0x51 // device address
+        , (byte)0x1C // length
+        , (byte)0xC2 // command LOGON
+        , (byte)0x01 , (byte)0x23  , (byte)0x45 , (byte)0x67 // driver number 1234567
+        , (byte)0x65 , (byte)0x43 , (byte)0x21 // module 654321
+        , (byte)0x02 , (byte)0x01  , (byte)0x05 // running board 20105
+        , (byte)0x00 , (byte)0x12 , (byte)0x34 // duty 1234
+        , (byte)0x31 , (byte)0x32 , (byte)0x41 , (byte)0x20 // service 12A
+        , (byte)0x01 , (byte)0x52 // journey 152
+        , (byte)0x00 // direction outward
+        , (byte)0x30 // depot 30
+        , (byte)0x10 , (byte)0x27 // time 10:27
+        , (byte)0x14 // states
+        , (byte)0x00 , (byte)0x00 // CRC low/high
+    };
     
-    AVLRecord wfr = impl.receiveWayfarerLogOnOff(msg.getBytes()); 
+    AVLRecord wfr = impl.receiveWayfarerLogOnOff(msg); 
     assertNotNull(wfr);
     assertTrue(wfr instanceof WayfarerLogon);
     

@@ -6,6 +6,7 @@ import org.slf4j.LoggerFactory;
 public abstract class AVLRecordFieldSetter<T extends AVLRecord> {
   
   private static final Logger _log = LoggerFactory.getLogger(AVLRecordFieldSetter.class);
+  private boolean TRIM_LEFT_PADDING = true;
   
   protected byte[] bytes;
   protected int start;
@@ -90,11 +91,27 @@ public abstract class AVLRecordFieldSetter<T extends AVLRecord> {
     
     for (int i = start; i < start+length; i++) {
       String s = bcdToString(buff[i]);
-      _log.info(s);
+//      _log.info(s);
       sb.append(s);
     }
-    _log.info(start + "->" + length + "="+sb.toString());
-    return sb.toString();
+//    _log.info(start + "->" + length + "="+sb.toString());
+    return trimLeftPadding(sb.toString());
+  }
+
+  private String trimLeftPadding(String string) {
+    if (this.TRIM_LEFT_PADDING) {
+      StringBuffer trimmed = new StringBuffer();
+      boolean foundNonZero = false;
+      for (int i = 0; i < string.length(); i++) {
+        if (! foundNonZero && string.charAt(i) == '0') {
+          continue;
+        }
+        foundNonZero = true;
+        trimmed.append(string.charAt(i));
+      }
+      return trimmed.toString();
+    }
+    return string;
   }
 
   public String bcdToString(byte bcd) {

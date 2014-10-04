@@ -77,8 +77,10 @@ public class VehicleUpdateServiceImpl implements VehicleUpdateService {
     int trail = inputStream.read();
     byte[] muxArray = {(byte) stx, (byte) byteMarker, (byte) size, (byte) trail};
     inputStream.reset();
+    _log.info("dispatch byteMarker=" + byteMarker);
     // check if logon
     if (byteMarker == 81) {
+      _log.info("size=" + size);
       if (size == 3) {
         _log.debug("found logoff");
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
@@ -86,11 +88,11 @@ public class VehicleUpdateServiceImpl implements VehicleUpdateService {
         IOUtils.read(inputStream, buff, 0, 6);
         this.receiveWayfarerLogOnOff(buff);
         return true;
-      } else if (size == 27) {
+      } else if (size >= 27) {
         _log.debug("found logon");
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        byte buff[] = new byte[30]; 
-        IOUtils.read(inputStream, buff, 0, 27);
+        byte buff[] = new byte[size + 3]; 
+        IOUtils.read(inputStream, buff, 0, size + 3);
         this.receiveWayfarerLogOnOff(buff);
         return true;
       } else {
@@ -163,7 +165,7 @@ public class VehicleUpdateServiceImpl implements VehicleUpdateService {
   }
 
   public AVLRecord receiveWayfarerLogOnOff(byte[] buff) {
-    if (buff.length > 30) {
+    if (buff.length >= 27) {
       int start = 0;
       int len = buff.length;
       _log.info("u(" + len + "):" + new String(buff));

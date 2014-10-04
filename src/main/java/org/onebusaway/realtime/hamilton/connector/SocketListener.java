@@ -57,7 +57,7 @@ public class SocketListener {
         if (serverSocket == null || serverSocket.isClosed()) {
           try {
             serverSocket = new ServerSocket(port);
-            _log.info("listening for TCIP on port " + port);
+            _log.info("listening for raw data on port " + port);
           } catch (IOException e) {
             _log.error("issue creating socket: " + e, e);
           }
@@ -72,7 +72,7 @@ public class SocketListener {
           
           if (client != null) {
             try {
-              
+              _log.info("accepted");
               InputStream inputStream = new BufferedInputStream(client.getInputStream());
               inputStream.mark(1);
               int read = inputStream.read();

@@ -27,7 +27,7 @@ public class WayfarerLogonRecordFactory extends AVLRecordFactory<WayfarerLogon> 
     }),
     new FieldDef(1, "length", new WayfarerFieldSetter() {
       public void setField(WayfarerLogon record) {
-        _log.info("length=" + getStringData());
+        _log.info("length=" + new Integer(bytes[start]));
       }
     }),
     new FieldDef(1, "cmd", new WayfarerFieldSetter() {
@@ -60,7 +60,7 @@ public class WayfarerLogonRecordFactory extends AVLRecordFactory<WayfarerLogon> 
         record.setService(getStringData());
       }
     }),
-    new FieldDef(3, "journey", new WayfarerFieldSetter() {
+    new FieldDef(2, "journey", new WayfarerFieldSetter() {
       public void setField(WayfarerLogon record) {
         record.setJourney(getBcd());
       }
@@ -70,11 +70,21 @@ public class WayfarerLogonRecordFactory extends AVLRecordFactory<WayfarerLogon> 
         record.setInbound((byte)1 == bytes[start]); 
       }
     }),
+    new FieldDef(1, "depot", new WayfarerFieldSetter() {
+      public void setField(WayfarerLogon record) {
+        record.setDepot(getBcd());
+      }
+    }),
     new FieldDef(2, "time", new WayfarerFieldSetter() {
       public void setField(WayfarerLogon record) {
         String hour = bcdToString(bytes, start, 1);
         String minute = bcdToString(bytes, start+1, 1);
         record.setDepartureTimeString(hour + ":" + minute);
+      }
+    }),
+    new FieldDef(1, "states", new WayfarerFieldSetter() {
+      public void setField(WayfarerLogon record) {
+        record.setStates("" + new Integer(bytes[start]));
       }
     })
   };
